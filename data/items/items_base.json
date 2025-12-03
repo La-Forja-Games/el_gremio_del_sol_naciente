@@ -1,0 +1,71 @@
+{
+  "items": [
+    {
+      "id": 1001,
+      "nombre": "Mate Caliente",
+      "descripcion": "Infusión que restaura HP lento. Cura Vértigo.",
+      "categoria": "Consumible",
+      "stackable": true,
+      "max_stack": 99,
+      "efecto": [
+        {
+          "tipo": "HoT",
+          "valor": 5,
+          "turnos": 3
+        },
+        {
+          "tipo": "Cura_Debuff",
+          "debuff": "VERTIGO"
+        }
+      ],
+      "precio": 20
+    },
+    {
+      "id": 1002,
+      "nombre": "Poción de Calor",
+      "descripcion": "Poción que restaura el medidor de calor en zonas frías.",
+      "categoria": "Consumible",
+      "stackable": true,
+      "max_stack": 99,
+      "efecto": [
+        {
+          "tipo": "Restaura_Calor",
+          "valor": 50
+        }
+      ],
+      "precio": 30
+    },
+    {
+      "id": 2001,
+      "nombre": "Facón Familiar",
+      "descripcion": "El facón del abuelo. Arma simple pero confiable.",
+      "categoria": "Arma",
+      "stackable": false,
+      "tipo_arma": "Cuerpo a Cuerpo",
+      "bonus_stats": {
+        "ATK": 5,
+        "VEL": 2
+      },
+      "precio": 0
+    },
+    {
+      "id": 3001,
+      "nombre": "Leña",
+      "descripcion": "Leña para mantener el fuego encendido.",
+      "categoria": "Material",
+      "stackable": true,
+      "max_stack": 99,
+      "precio": 5
+    },
+    {
+      "id": 3002,
+      "nombre": "Pieles",
+      "descripcion": "Pieles de animales para abrigo.",
+      "categoria": "Material",
+      "stackable": true,
+      "max_stack": 99,
+      "precio": 10
+    }
+  ]
+}
+

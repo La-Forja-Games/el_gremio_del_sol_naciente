@@ -1,0 +1,41 @@
+{
+  "dialogs": {
+    "dialogo_ramon_01": [
+      {
+        "personaje": "RAMON",
+        "texto": "¿Dicen que buscan una vieja bóveda por aquí?...",
+        "siguiente": "dialogo_ramon_02"
+      },
+      {
+        "id": "dialogo_ramon_02",
+        "personaje": "RAMON",
+        "texto": "Es peligroso. ¿Están listos para la roca?",
+        "opciones": [
+          {
+            "texto": "Sí, somos del Gremio.",
+            "siguiente": "ramificacion_A"
+          },
+          {
+            "texto": "No, sólo buscamos minerales.",
+            "siguiente": "ramificacion_B"
+          }
+        ]
+      }
+    ],
+    "ramificacion_A": [
+      {
+        "personaje": "RAMON",
+        "texto": "Entonces, ¡a trabajar!...",
+        "accion": "UNIR_PERSONAJE_RAMON"
+      }
+    ],
+    "ramificacion_B": [
+      {
+        "personaje": "RAMON",
+        "texto": "Bueno, tengan cuidado ahí abajo...",
+        "siguiente": null
+      }
+    ]
+  }
+}
+

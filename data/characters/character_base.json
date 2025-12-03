@@ -1,0 +1,53 @@
+{
+  "characters": [
+    {
+      "id": 1,
+      "nombre": "El Heredero",
+      "clase": "Guardían del Fuego",
+      "stats_base": {
+        "HP": 100,
+        "MP": 50,
+        "ATK": 15,
+        "DEF": 10,
+        "VEL": 12,
+        "MAG": 5
+      },
+      "crecimiento_stats": {
+        "HP": 10,
+        "MP": 5,
+        "ATK": 2,
+        "DEF": 1,
+        "VEL": 1,
+        "MAG": 1
+      },
+      "arma_inicial": 2001,
+      "rol_combate": "DPS Principal",
+      "rol_exploracion": "Supervivencia y Crafting"
+    },
+    {
+      "id": 2,
+      "nombre": "La Historiadora Andina",
+      "clase": "Estratega del Ingenio",
+      "stats_base": {
+        "HP": 70,
+        "MP": 80,
+        "ATK": 5,
+        "DEF": 8,
+        "VEL": 10,
+        "MAG": 18
+      },
+      "crecimiento_stats": {
+        "HP": 5,
+        "MP": 8,
+        "ATK": 0,
+        "DEF": 1,
+        "VEL": 1,
+        "MAG": 2
+      },
+      "arma_inicial": null,
+      "rol_combate": "Soporte Táctico",
+      "rol_exploracion": "Resolver Puzles y Mapeo"
+    }
+  ]
+}
+

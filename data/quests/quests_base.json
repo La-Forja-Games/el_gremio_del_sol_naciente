@@ -1,0 +1,37 @@
+{
+  "quests": [
+    {
+      "id": 501,
+      "tipo": "Cronica",
+      "nombre": "Búsqueda del Picapedrero",
+      "descripcion": "Encuentra a Ramón en la Cantera Olvidada...",
+      "objetivos": [
+        {
+          "tipo": "IR_A_XY",
+          "mapa": 5,
+          "x": 100,
+          "y": 200,
+          "estado": "PENDIENTE"
+        },
+        {
+          "tipo": "HABLAR_CON_PNJ",
+          "pnj": "RAMON",
+          "estado": "PENDIENTE"
+        }
+      ],
+      "recompensa": [
+        {
+          "tipo": "EXP",
+          "valor": 500
+        },
+        {
+          "tipo": "OBJETO",
+          "id": 4001,
+          "cant": 1
+        }
+      ],
+      "estado": "ACTIVA"
+    }
+  ]
+}
+

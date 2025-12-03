@@ -1,0 +1,82 @@
+"""
+Clase principal del juego - Loop principal
+"""
+
+import pygame
+import sys
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, STATE_MENU
+from src.state_manager import StateManager
+from src.resource_manager import ResourceManager
+from src.states.menu_state import MenuState
+
+
+class Game:
+    """Clase principal que maneja el loop del juego"""
+    
+    def __init__(self):
+        """Inicializa Pygame y crea la ventana"""
+        pygame.init()
+        pygame.mixer.init()
+        
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption(TITLE)
+        self.clock = pygame.time.Clock()
+        
+        self.running = True
+        self.dt = 0.0  # Delta time en segundos
+        
+        # Inicializar sistemas
+        self.resource_manager = ResourceManager()
+        self.state_manager = StateManager()
+        
+        # Registrar estados
+        menu_state = MenuState(self.state_manager)
+        self.state_manager.register_state(STATE_MENU, menu_state)
+        
+        # Iniciar con el menú
+        self.state_manager.change_state(STATE_MENU)
+        
+    def run(self):
+        """Ejecuta el loop principal del juego"""
+        while self.running:
+            # Calcular delta time
+            self.dt = self.clock.tick(FPS) / 1000.0  # Convertir a segundos
+            
+            # Manejar eventos
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                else:
+                    # Pasar eventos al estado actual
+                    if self.state_manager.get_current_state():
+                        current_state = self.state_manager._states.get(
+                            self.state_manager.get_current_state()
+                        )
+                        if current_state:
+                            current_state.handle_event(event)
+            
+            # Actualizar
+            self.state_manager.update(self.dt)
+            
+            # Renderizar
+            self.screen.fill((0, 0, 0))  # Limpiar pantalla
+            self.state_manager.render(self.screen)
+            pygame.display.flip()
+        
+        self.quit()
+    
+    def quit(self):
+        """Limpia recursos y cierra el juego"""
+        pygame.quit()
+        sys.exit()
+
+
+def main():
+    """Punto de entrada principal"""
+    game = Game()
+    game.run()
+
+
+if __name__ == "__main__":
+    main()
+
