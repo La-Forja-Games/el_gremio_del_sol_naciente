@@ -157,26 +157,15 @@ class Character:
         
         Args:
             dt: Delta time
-            ground_level: Nivel del suelo (opcional)
+            ground_level: Nivel del suelo (opcional, None para top-down sin gravedad)
         """
-        from src.physics.physics_engine import PhysicsEngine
+        # En top-down no aplicamos física de gravedad
+        # Este método se mantiene por compatibilidad pero no hace nada en top-down
+        if ground_level is None:
+            return
         
-        # Aplicar gravedad
-        self.velocity_y = PhysicsEngine.apply_gravity(self.velocity_y, dt)
-        
-        # Aplicar movimiento vertical
-        self.y += self.velocity_y * dt
-        
-        # Verificar colisión con el suelo
-        if ground_level is not None:
-            if self.rect.bottom >= ground_level:
-                self.rect.bottom = ground_level
-                self.y = ground_level - self.rect.height
-                self.velocity_y = 0
-                self.on_ground = True
-                self.can_jump = True
-            else:
-                self.on_ground = False
+        # Si en el futuro se necesita física, se puede implementar aquí
+        # Por ahora, top-down no requiere física
         
         # Actualizar rectángulo
         self.rect.y = int(self.y)
@@ -199,11 +188,10 @@ class Character:
                 self.current_animation = self.animations[self.direction]
                 self.current_animation.reset()
         
-        # Actualizar animación (solo si se está moviendo)
+        # Actualizar animación
         if self.current_animation:
             if self.moving:
-                # Animación más rápida cuando se mueve
-                self.current_animation.speed = 0.15
+                # Cuando se mueve, animar normalmente (walking fluido)
                 self.current_animation.update(dt)
             else:
                 # Cuando está quieto, mantener el primer frame (idle) SIN animar

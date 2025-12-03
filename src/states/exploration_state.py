@@ -10,10 +10,11 @@ from src.config import (
     STATE_INVENTORY, TILE_SIZE
 )
 from src.entities.player import Player
+from src.entities.animation import Direction
 from src.map.map_manager import MapManager
 from src.map.map_transition import MapTransition
-from src.map.tile_generator import tile_generator
-from src.camera_side_scroll import SideScrollCamera
+from src.map.tile_generator import initialize_tile_generator, TileGenerator
+from src.camera import Camera
 
 
 class ExplorationState(GameState):
@@ -26,6 +27,7 @@ class ExplorationState(GameState):
         self.map_transition = MapTransition(self.map_manager)
         self.camera = None
         self.game = None  # Referencia al juego (se asigna desde Game)
+        self.tile_generator = None  # Generador de tiles
         
         # Input
         self.keys_pressed = {}
@@ -36,24 +38,21 @@ class ExplorationState(GameState):
         
     def enter(self):
         """Inicializa el estado de exploración"""
-        # Nivel del suelo (para física) - Definir PRIMERO
-        self.ground_level = SCREEN_HEIGHT - 100
-        
-        # Obtener resource_manager del juego
+        # Obtener resource_manager y asset_lib del juego
         resource_manager = None
+        asset_lib = None
         if self.game:
             resource_manager = self.game.resource_manager
+            asset_lib = self.game.asset_lib
         
-        # Crear jugador (posición inicial para side-scrolling)
-        start_x = 100  # Empezar a la izquierda
-        # La Y se ajustará cuando se cargue el sprite para que los pies estén en el suelo
-        start_y = SCREEN_HEIGHT - 150  # Temporal, se ajustará
+        # Inicializar tile_generator con resource_manager para usar tilesets reales
+        if self.tile_generator is None:
+            self.tile_generator = TileGenerator(resource_manager, asset_lib)
+        
+        # Crear jugador (posición inicial para top-down)
+        start_x = SCREEN_WIDTH // 2  # Centro horizontal
+        start_y = SCREEN_HEIGHT // 2  # Centro vertical
         self.player = Player(start_x, start_y, resource_manager=resource_manager)
-        
-        # Ajustar posición Y después de cargar el sprite para que esté en el suelo
-        if self.player.image:
-            self.player.rect.bottom = self.ground_level
-            self.player.y = self.player.rect.bottom - self.player.rect.height
         
         # Asegurar que el jugador tenga un sprite válido
         if not self.player.image:
@@ -67,18 +66,20 @@ class ExplorationState(GameState):
         # Cargar mapa de prueba (si existe)
         # self.map_manager.load_map("test_map.tmx")
         
-        # Inicializar cámara side-scrolling
-        world_width = 2000  # Ancho del mundo (puede ser dinámico según el mapa)
-        world_height = SCREEN_HEIGHT
-        self.camera = SideScrollCamera(world_width, world_height)
-        self.camera.update(self.player.x, self.player.y)
+        # Inicializar cámara top-down
+        # Tamaño del mapa en tiles (puede ser dinámico según el mapa cargado)
+        map_width_tiles = 50  # Ancho del mapa en tiles
+        map_height_tiles = 50  # Alto del mapa en tiles
+        self.camera = Camera(map_width_tiles, map_height_tiles)
+        self.camera.update(self.player)
         
-        print("Estado de exploración iniciado")
+        print("Estado de exploración iniciado (vista top-down)")
     
     def update(self, dt):
-        """Actualiza la lógica de exploración (side-scrolling)"""
-        # Manejar input de movimiento horizontal
+        """Actualiza la lógica de exploración (top-down)"""
+        # Manejar input de movimiento en 4 direcciones
         dx = 0
+        dy = 0
         
         keys = pygame.key.get_pressed()
         
@@ -86,29 +87,52 @@ class ExplorationState(GameState):
             dx = -1
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             dx = 1
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            dy = -1
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            dy = 1
         
-        # Mover jugador horizontalmente
-        if dx != 0:
-            # Verificar colisiones horizontales antes de mover
+        # Mover jugador
+        if dx != 0 or dy != 0:
+            # Verificar colisiones antes de mover
             test_rect = self.player.rect.copy()
             test_rect.x += dx * self.player.speed * dt
+            test_rect.y += dy * self.player.speed * dt
             
             # Si no hay colisión, mover
             if not self.map_manager.check_collision(test_rect):
-                self.player.move(dx, dt)
+                # Movimiento top-down (sin física de gravedad)
+                self.player.x += dx * self.player.speed * dt
+                self.player.y += dy * self.player.speed * dt
+                self.player.rect.x = int(self.player.x)
+                self.player.rect.y = int(self.player.y)
+                
+                # Actualizar dirección y estado de movimiento
+                if dx < 0:
+                    self.player.direction = Direction.LEFT
+                elif dx > 0:
+                    self.player.direction = Direction.RIGHT
+                elif dy < 0:
+                    self.player.direction = Direction.UP
+                elif dy > 0:
+                    self.player.direction = Direction.DOWN
+                
+                self.player.moving = True
             else:
                 # Detener movimiento si hay colisión
-                self.player.velocity_x = 0
+                self.player.moving = False
+        else:
+            self.player.moving = False
         
-        # Actualizar jugador (con física)
-        self.player.update(dt, self.ground_level)
+        # Actualizar jugador (sin física de gravedad para top-down)
+        self.player.update(dt, ground_level=None)
         
         # Actualizar partículas
         self.particles.update(dt)
         
-        # Actualizar cámara (side-scrolling)
+        # Actualizar cámara (top-down)
         if self.camera:
-            self.camera.update(self.player.x, self.player.y)
+            self.camera.update(self.player)
         
         # Verificar eventos en la posición del jugador
         events = self.map_manager.get_events_at_position(
@@ -136,10 +160,7 @@ class ExplorationState(GameState):
                 # Abrir inventario
                 self.state_manager.push_state(STATE_INVENTORY)
                 return True
-            elif event.key == pygame.K_SPACE or event.key == pygame.K_w or event.key == pygame.K_UP:
-                # Saltar
-                self.player.jump()
-                return True
+            # En top-down no hay saltos, las teclas W/UP se usan para movimiento
             elif event.key == pygame.K_e:
                 # Interactuar (por ahora no hace nada)
                 pass
@@ -151,20 +172,20 @@ class ExplorationState(GameState):
         return False
     
     def render(self, screen):
-        """Renderiza el estado de exploración (side-scrolling)"""
-        # Limpiar pantalla con color de fondo (cielo)
-        screen.fill((135, 206, 235))  # Azul cielo
+        """Renderiza el estado de exploración (top-down)"""
+        # Limpiar pantalla con color de fondo
+        screen.fill((100, 150, 100))  # Verde pasto
         
-        # Renderizar suelo y fondo
+        # Renderizar fondo (tiles de césped)
         self._render_background(screen)
         
         # Renderizar mapa (si existe)
         if self.camera and self.map_manager.current_map:
-            self.map_manager.render(screen, self.camera.get_rect())
+            self.map_manager.render(screen, self.camera.rect)
         
         # Renderizar jugador
         if self.player and self.camera:
-            screen_x, screen_y = self.camera.apply(self.player.rect.x, self.player.rect.y)
+            screen_x, screen_y = self.camera.apply(self.player)
             
             # Renderizar sprite del jugador (asegurar que existe y tiene tamaño válido)
             if self.player.image:
@@ -173,13 +194,8 @@ class ExplorationState(GameState):
                 sprite_h = self.player.image.get_height()
                 
                 if sprite_w > 0 and sprite_h > 0:
-                    # Renderizar el sprite completo sin escalar (tamaño original)
+                    # Renderizar el sprite completo sin escalar (tamaño original 256x256)
                     screen.blit(self.player.image, (screen_x, screen_y))
-                    
-                    # Debug: mostrar información del sprite (temporal)
-                    # font = pygame.font.Font(None, 16)
-                    # debug_text = font.render(f"Sprite: {sprite_w}x{sprite_h}", True, (255, 255, 0))
-                    # screen.blit(debug_text, (screen_x, screen_y - 20))
                 else:
                     # Fallback: dibujar un rectángulo visible
                     pygame.draw.rect(screen, (255, 0, 0), 
@@ -200,19 +216,20 @@ class ExplorationState(GameState):
             if self.player.moving and random.random() < 0.1:
                 self.particles.add_magic_sparkles(
                     self.player.rect.centerx,
-                    self.player.rect.bottom,
+                    self.player.rect.centery,
                     (200, 200, 200),
                     2
                 )
         
         # Renderizar partículas
         if self.camera:
-            camera_offset = (self.camera.x, self.camera.y)
+            camera_offset = (self.camera.rect.x, self.camera.rect.y)
             self.particles.render(screen, camera_offset)
         
         # Renderizar HUD básico
-        font = pygame.font.Font(None, 24)
-        small_font = pygame.font.Font(None, 18)
+        from src.utils.font_helper import get_normal_font, get_small_font
+        font = get_normal_font(24)
+        small_font = get_small_font(18)
         
         # Información básica
         info_text = font.render("ESC: Pausa | I: Inventario", True, (255, 255, 255))
@@ -229,34 +246,40 @@ class ExplorationState(GameState):
             screen.blit(level_text, (10, 75))
     
     def _render_background(self, screen):
-        """Renderiza el fondo y suelo para side-scrolling"""
+        """Renderiza el fondo para top-down (tiles de césped)"""
         from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
         
-        # Renderizar suelo
-        ground_y = self.ground_level
-        screen_ground_y = ground_y - self.camera.y if self.camera else ground_y
+        if not self.camera:
+            return
         
-        # Suelo (césped)
-        grass_tile = tile_generator.get_tile("grass")
-        num_tiles = (SCREEN_WIDTH // TILE_SIZE) + 2
+        # Verificar que tile_generator esté inicializado
+        if self.tile_generator is None:
+            # Inicializar si no está inicializado
+            resource_manager = None
+            asset_lib = None
+            if self.game:
+                resource_manager = self.game.resource_manager
+                asset_lib = self.game.asset_lib
+            self.tile_generator = TileGenerator(resource_manager, asset_lib)
         
-        for i in range(num_tiles):
-            tile_x = (i * TILE_SIZE) - (self.camera.x % TILE_SIZE) if self.camera else (i * TILE_SIZE)
-            if screen_ground_y < SCREEN_HEIGHT:
-                screen.blit(grass_tile, (tile_x, screen_ground_y))
+        # Renderizar tiles de césped en el área visible
+        grass_tile = self.tile_generator.get_tile("grass")
         
-        # Línea del suelo (opcional, para debug)
-        # pygame.draw.line(screen, (0, 255, 0), (0, screen_ground_y + TILE_SIZE), (SCREEN_WIDTH, screen_ground_y + TILE_SIZE), 2)
+        # Calcular qué tiles están visibles
+        start_tile_x = self.camera.rect.x // TILE_SIZE
+        start_tile_y = self.camera.rect.y // TILE_SIZE
+        tiles_x = (SCREEN_WIDTH // TILE_SIZE) + 2
+        tiles_y = (SCREEN_HEIGHT // TILE_SIZE) + 2
         
-        # Renderizar algunas nubes de fondo (decoración)
-        if self.camera:
-            for i in range(3):
-                cloud_x = 200 + i * 400 - (self.camera.x * 0.3)  # Movimiento parallax
-                cloud_y = 50 + i * 30
-                if -100 < cloud_x < SCREEN_WIDTH + 100:
-                    pygame.draw.ellipse(screen, (255, 255, 255), (cloud_x, cloud_y, 60, 30))
-                    pygame.draw.ellipse(screen, (255, 255, 255), (cloud_x + 20, cloud_y - 10, 50, 25))
-                    pygame.draw.ellipse(screen, (255, 255, 255), (cloud_x + 40, cloud_y, 40, 20))
+        for y in range(tiles_y):
+            for x in range(tiles_x):
+                tile_world_x = (start_tile_x + x) * TILE_SIZE
+                tile_world_y = (start_tile_y + y) * TILE_SIZE
+                tile_screen_x = tile_world_x - self.camera.rect.x
+                tile_screen_y = tile_world_y - self.camera.rect.y
+                
+                if -TILE_SIZE < tile_screen_x < SCREEN_WIDTH and -TILE_SIZE < tile_screen_y < SCREEN_HEIGHT:
+                    screen.blit(grass_tile, (tile_screen_x, tile_screen_y))
     
     def _change_map(self, map_id: str, spawn_point: str = "default"):
         """
@@ -273,9 +296,9 @@ class ExplorationState(GameState):
             self.player.rect.x = int(spawn_pos[0])
             self.player.rect.y = int(spawn_pos[1])
             
-            # Actualizar cámara con nuevas dimensiones (side-scrolling)
-            map_width = self.map_manager.get_map_width() if self.map_manager.get_map_width() > 0 else 2000
-            map_height = SCREEN_HEIGHT
-            self.camera = SideScrollCamera(map_width, map_height)
-            self.camera.update(self.player.x, self.player.y)
+            # Actualizar cámara con nuevas dimensiones (top-down)
+            map_width_tiles = self.map_manager.get_map_width() // TILE_SIZE if self.map_manager.get_map_width() > 0 else 50
+            map_height_tiles = self.map_manager.get_map_height() // TILE_SIZE if self.map_manager.get_map_height() > 0 else 50
+            self.camera = Camera(map_width_tiles, map_height_tiles)
+            self.camera.update(self.player)
 

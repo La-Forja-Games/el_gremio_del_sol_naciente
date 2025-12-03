@@ -1,4 +1,0 @@
-"""
-Sistema de física
-"""
-

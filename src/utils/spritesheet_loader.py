@@ -104,13 +104,16 @@ class SpriteSheetLoader:
         """
         Crea las animaciones del jugador basándose en el layout del spritesheet
         
-        Para un spritesheet 4x4, típicamente:
-        - Row 0: Idle frames (diferentes poses)
-        - Row 1: Walking frames (diferentes fases del paso)
-        - Row 2: Attack frames
-        - Row 3: Otros frames (jump, etc.)
+        Según la documentación:
+        - Fila 0: [Front Idle (sword), Back Idle, Back Idle (arms out), Front Idle (arms out)]
+        - Fila 1: [Duplicado de Fila 0]
+        - Fila 2: [Front Idle, Front con espada fuego (izq), Back Idle, Front con espada fuego (der)] - NO USAR (combate)
+        - Fila 3: [Front Idle, Front Idle, Front Walking, Front con espada fuego (der)]
         
-        O alternativamente, cada fila puede ser una dirección diferente.
+        Para top-down, usamos:
+        - Idle: Fila 0, col 0 (Front Idle con espada normal, sin fuego)
+        - Walking: Fila 3, col 2 (Front Walking, sin espada de fuego)
+        - Back: Fila 0, col 1 (Back Idle)
         
         Returns:
             Diccionario con animaciones por dirección
@@ -128,50 +131,73 @@ class SpriteSheetLoader:
                 Direction.RIGHT: placeholder
             }
         
-        # Para side-scrolling, asumimos que:
-        # - Row 0: Idle frames (col 0 = idle principal)
-        # - Row 1: Walking frames (col 0, 1, 2, 3 = diferentes fases del paso)
-        
-        # Front/Right idle (row 0, col 0)
+        # Front/Right idle (Fila 0, col 0) - Front Idle con espada normal
+        # NOTA: Este tiene espada, solo lo usamos para idle cuando está quieto
         front_idle = self.get_sprite(0, 0)
         
-        # Intentar encontrar frames de caminar
-        # Si hay múltiples columnas en la fila 1, usarlas para walking
+        # Buscar frames de caminar SIN espada
+        # Según la documentación:
+        # - Fila 0, col 0: Front Idle (sword) - TIENE ESPADA ❌
+        # - Fila 0, col 3: Front Idle (arms out) - SIN ESPADA ✅
+        # - Fila 3, col 0: Front Idle - puede tener espada ❌
+        # - Fila 3, col 1: Front Idle - puede tener espada ❌
+        # - Fila 3, col 2: Front Walking - puede tener espada ❌ (verificar)
+        # - Fila 3, col 3: Front con espada fuego - TIENE ESPADA ❌
+        
+        # Usar SOLO el frame "arms out" que definitivamente NO tiene espada
+        # Y crear variaciones de animación usando solo ese frame
         walking_frames = []
-        if self.sheet_width >= 4 and self.sheet_height >= 2:
-            # Usar fila 1 para walking (típicamente tiene 4 frames)
-            for col in range(min(4, self.sheet_width)):
-                walking_frame = self.get_sprite(col, 1)
-                walking_frames.append(walking_frame)
+        
+        if self.sheet_width >= 4 and self.sheet_height >= 1:
+            # Fila 0, col 3: Front Idle (arms out) - SIN ESPADA (definitivo)
+            frame_arms_out = self.get_sprite(3, 0)
+            
+            # Usar SOLO este frame sin espada para toda la animación de caminar
+            # Crear una animación simple pero sin espada
+            walking_frames = [frame_arms_out, frame_arms_out, frame_arms_out, frame_arms_out]
+            
+            print("Usando frame 'arms out' (sin espada) para caminar")
         else:
-            # Si no hay suficientes frames, usar solo el idle
-            walking_frames = [front_idle]
+            # Si no hay col 3, intentar usar Back Idle (Fila 0, col 1) que tampoco debería tener espada frontal
+            if self.sheet_width >= 2:
+                back_idle_frame = self.get_sprite(1, 0)
+                walking_frames = [back_idle_frame, back_idle_frame]
+                print("ADVERTENCIA: Usando Back Idle como fallback (puede verse raro)")
+            else:
+                # Último recurso: usar idle pero mostrará espada
+                print("ADVERTENCIA: No se encontraron frames sin espada, se mostrará espada")
+                walking_frames = [front_idle]
         
-        # Si no hay frames de caminar, usar solo idle
-        if not walking_frames:
-            walking_frames = [front_idle]
+        # Usar los frames directamente (ya están sin espada)
+        right_walking_frames = walking_frames
         
-        # Animación idle: solo el frame idle, sin animación
-        idle_animation = Animation([front_idle], speed=0.5)
+        # Back idle (Fila 0, col 1) - Back Idle
+        back_idle = None
+        if self.sheet_width >= 2:
+            back_idle = self.get_sprite(1, 0)
+        else:
+            back_idle = front_idle
         
-        # Animación walking: ciclar entre idle y walking frames
-        # Para que se vea más natural, alternamos entre idle y walking
-        right_walking_frames = [front_idle] + walking_frames[:2]  # Idle + 2 frames de caminar
-        animations[Direction.RIGHT] = Animation(right_walking_frames, speed=0.15)
+        # Animación para RIGHT (mirando a la derecha/frente) - SOLO frames de caminar sin espada
+        # Cuando camine, usará estos frames. Cuando esté quieto, usará el primer frame (idle)
+        animations[Direction.RIGHT] = Animation(right_walking_frames, speed=0.1)
         
-        # Para idle, usar solo el frame idle (sin movimiento de manos)
-        # Guardamos la animación idle por separado
+        # Animación para LEFT (mirando a la izquierda) - espejar los frames de caminar
+        left_walking_frames = [pygame.transform.flip(f, True, False) for f in right_walking_frames]
+        animations[Direction.LEFT] = Animation(left_walking_frames, speed=0.1)
+        
+        # Animación para DOWN (mirando hacia abajo/frente) - igual que RIGHT
+        animations[Direction.DOWN] = Animation(right_walking_frames, speed=0.12)
+        
+        # Animación para UP (mirando hacia arriba/atrás) - usar back idle
+        back_walking = back_idle  # Si no hay walking de espalda, usar idle
+        up_walking_frames = [back_idle, back_walking, back_idle, back_walking]
+        animations[Direction.UP] = Animation(up_walking_frames, speed=0.12)
+        
+        # Guardar sprite idle para referencia
         self.idle_sprite = front_idle
         
-        # Left (mirando a la izquierda) - espejar sprites frontales
-        left_idle = pygame.transform.flip(front_idle, True, False)
-        left_walking = [pygame.transform.flip(f, True, False) for f in right_walking_frames]
-        animations[Direction.LEFT] = Animation(left_walking, speed=0.15)
-        
-        # UP/DOWN no se usan mucho en side-scrolling, pero los definimos
-        back_idle = self.get_sprite(1, 0) if self.sheet_width > 1 else front_idle
-        animations[Direction.UP] = Animation([back_idle], speed=0.5)
-        animations[Direction.DOWN] = Animation([front_idle], speed=0.5)
+        print(f"Animaciones creadas: Idle desde (0,0), Walking desde (2,3), Back desde (1,0)")
         
         return animations
     

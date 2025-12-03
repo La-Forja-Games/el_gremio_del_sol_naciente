@@ -44,9 +44,10 @@ class CombatState(GameState):
     def enter(self):
         """Inicializa el estado de combate"""
         # Fuentes
-        self.font = pygame.font.Font(None, 24)
-        self.title_font = pygame.font.Font(None, 36)
-        self.small_font = pygame.font.Font(None, 18)
+        from src.utils.font_helper import get_normal_font, get_epic_font, get_small_font
+        self.font = get_normal_font(24)
+        self.title_font = get_epic_font(36, bold=True)
+        self.small_font = get_small_font(18)
         
         # Obtener jugador y crear combate de prueba
         from src.config import STATE_EXPLORATION

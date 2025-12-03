@@ -38,3 +38,41 @@ STATE_CAMP = "camp"
 STATE_DIALOG = "dialog"
 STATE_PAUSE = "pause"
 
+# Configuración de fuentes
+# Fuente principal: BLKCHCRY
+MAIN_FONT = "BLKCHCRY"
+
+# Fuentes personalizadas a intentar (en orden de preferencia)
+EPIC_FONTS = [
+    "ui/fonts/BLKCHCRY.TTF",  # Fuente BLKCHCRY personalizada (si existe)
+    "ui/fonts/blkchcry.ttf",  # Variante en minúsculas
+    "ui/fonts/BLKCHCRY.ttf",  # Variante mixta
+]
+
+# Fuentes del sistema a intentar como fallback
+SYSTEM_EPIC_FONTS = [
+    "BLKCHCRY",  # Fuente principal
+    "Arial Black",  # Negrita y épica
+    "Impact",  # Fuente impactante
+    "Courier New",  # Estilo retro
+    "Times New Roman",  # Clásica
+]
+
+# Configuración de fuentes
+# Fuentes épicas a intentar (en orden de preferencia)
+EPIC_FONTS = [
+    "assets/ui/fonts/pixel.ttf",  # Fuente pixel art personalizada (si existe)
+    "assets/ui/fonts/medieval.ttf",  # Fuente medieval personalizada (si existe)
+    "assets/ui/fonts/fantasy.ttf",  # Fuente fantasy personalizada (si existe)
+]
+
+# Fuentes del sistema góticas/medievales a intentar como fallback
+SYSTEM_EPIC_FONTS = [
+    "Algerian",  # Fuente gótica/medieval
+    "Old English Text MT",  # Estilo gótico antiguo
+    "Blackletter",  # Estilo gótico
+    "Goudy Old Style",  # Estilo antiguo elegante
+    "Times New Roman",  # Clásica como fallback
+    "Arial Black",  # Negrita como último recurso
+]
+

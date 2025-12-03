@@ -16,11 +16,17 @@ class PauseState(GameState):
         self.selected_option = 0
         self.options = ["Continuar", "Inventario", "Equipamiento", "Guardar", "Cargar", "Menú Principal"]
         self.game = None  # Referencia al juego (se asigna desde Game)
+        self.ui_panel = None  # Panel UI para el menú de pausa
         
     def enter(self):
         """Inicializa el estado de pausa"""
-        self.font = pygame.font.Font(None, 36)
+        from src.utils.font_helper import get_epic_font
+        self.font = get_epic_font(36, bold=True)
         self.selected_option = 0
+        
+        # Cargar UI panel usando RPG Asset Library
+        if self.game and self.game.asset_lib:
+            self.ui_panel = self.game.asset_lib.get_ui_element("Base-01")
     
     def handle_event(self, event):
         """Maneja eventos de entrada"""
@@ -67,29 +73,68 @@ class PauseState(GameState):
         pass
     
     def render(self, screen):
-        """Renderiza el menú de pausa"""
+        """Renderiza el menú de pausa con assets RPG"""
+        from src.utils.font_helper import get_epic_font
+        
         # Fondo semi-transparente
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(180)
+        overlay.set_alpha(200)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
         
-        # Título
-        title_font = pygame.font.Font(None, 48)
+        # Panel UI de fondo (si está disponible)
+        if self.ui_panel:
+            panel_width = 500
+            panel_height = 450
+            panel_scaled = pygame.transform.scale(self.ui_panel, (panel_width, panel_height))
+            panel_rect = panel_scaled.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            screen.blit(panel_scaled, panel_rect)
+        
+        # Título con sombra
+        title_font = get_epic_font(48, bold=True)
+        title_shadow = title_font.render("PAUSA", True, (0, 0, 0))
         title_text = title_font.render("PAUSA", True, COLOR_WHITE)
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2 + 2, 202))
+        screen.blit(title_shadow, title_rect)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 200))
         screen.blit(title_text, title_rect)
         
-        # Opciones
-        y_offset = 300
+        # Opciones con mejor estilo
+        y_offset = 280
+        button_width = 350
+        button_height = 45
+        
         for i, option in enumerate(self.options):
-            color = COLOR_WHITE if i == self.selected_option else (150, 150, 150)
-            text = self.font.render(option, True, color)
-            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, y_offset + i * 60))
+            # Color según selección
+            if i == self.selected_option:
+                text_color = (255, 215, 0)  # Dorado
+                bg_color = (100, 100, 100, 180)
+            else:
+                text_color = COLOR_WHITE
+                bg_color = (50, 50, 50, 120)
+            
+            # Fondo del botón
+            button_rect = pygame.Rect(
+                SCREEN_WIDTH // 2 - button_width // 2,
+                y_offset + i * 55 - button_height // 2,
+                button_width,
+                button_height
+            )
+            button_surface = pygame.Surface((button_width, button_height), pygame.SRCALPHA)
+            button_surface.fill(bg_color)
+            screen.blit(button_surface, button_rect)
+            
+            # Texto del botón
+            text = self.font.render(option, True, text_color)
+            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, y_offset + i * 55))
             screen.blit(text, text_rect)
             
-            # Indicador de selección
+            # Indicador de selección (flecha)
             if i == self.selected_option:
-                pygame.draw.circle(screen, COLOR_WHITE,
-                                 (SCREEN_WIDTH // 2 - 100, y_offset + i * 60), 5)
+                arrow_points = [
+                    (SCREEN_WIDTH // 2 - button_width // 2 + 20, y_offset + i * 55),
+                    (SCREEN_WIDTH // 2 - button_width // 2 + 10, y_offset + i * 55 - 8),
+                    (SCREEN_WIDTH // 2 - button_width // 2 + 10, y_offset + i * 55 + 8)
+                ]
+                pygame.draw.polygon(screen, text_color, arrow_points)
 

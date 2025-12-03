@@ -11,6 +11,7 @@ from src.config import (
 )
 from src.state_manager import StateManager
 from src.resource_manager import ResourceManager
+from src.utils.rpg_assets import RPGAssetLibrary
 from src.states.menu_state import MenuState
 from src.states.exploration_state import ExplorationState
 from src.states.pause_state import PauseState
@@ -37,9 +38,10 @@ class Game:
         
         # Inicializar sistemas
         self.resource_manager = ResourceManager()
+        self.asset_lib = RPGAssetLibrary(self.resource_manager)
         self.state_manager = StateManager()
         
-        # Pasar referencia del juego a los estados (para acceso a resource_manager)
+        # Pasar referencia del juego a los estados (para acceso a resource_manager y asset_lib)
         self.state_manager.game = self
         
         # Registrar estados
