@@ -6,13 +6,18 @@ import pygame
 import sys
 from src.config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, 
-    STATE_MENU, STATE_EXPLORATION, STATE_PAUSE
+    STATE_MENU, STATE_EXPLORATION, STATE_PAUSE,
+    STATE_INVENTORY, STATE_COMBAT
 )
 from src.state_manager import StateManager
 from src.resource_manager import ResourceManager
 from src.states.menu_state import MenuState
 from src.states.exploration_state import ExplorationState
 from src.states.pause_state import PauseState
+from src.states.inventory_state import InventoryState
+from src.states.equipment_state import EquipmentState
+from src.states.save_load_state import SaveLoadState
+from src.states.combat_state import CombatState
 
 
 class Game:
@@ -49,6 +54,22 @@ class Game:
         pause_state = PauseState(self.state_manager)
         pause_state.game = self
         self.state_manager.register_state(STATE_PAUSE, pause_state)
+        
+        inventory_state = InventoryState(self.state_manager)
+        inventory_state.game = self
+        self.state_manager.register_state(STATE_INVENTORY, inventory_state)
+        
+        equipment_state = EquipmentState(self.state_manager)
+        equipment_state.game = self
+        self.state_manager.register_state("equipment", equipment_state)
+        
+        save_load_state = SaveLoadState(self.state_manager)
+        save_load_state.game = self
+        self.state_manager.register_state("save_load", save_load_state)
+        
+        combat_state = CombatState(self.state_manager)
+        combat_state.game = self
+        self.state_manager.register_state(STATE_COMBAT, combat_state)
         
         # Iniciar con el menú
         self.state_manager.change_state(STATE_MENU)

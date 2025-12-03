@@ -4,7 +4,7 @@ Estado de pausa
 
 import pygame
 from src.state_manager import GameState
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_WHITE, STATE_MENU
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_WHITE, STATE_MENU, STATE_INVENTORY
 
 
 class PauseState(GameState):
@@ -14,7 +14,7 @@ class PauseState(GameState):
         super().__init__(state_manager)
         self.font = None
         self.selected_option = 0
-        self.options = ["Continuar", "Inventario", "Opciones", "Menú Principal"]
+        self.options = ["Continuar", "Inventario", "Equipamiento", "Guardar", "Cargar", "Menú Principal"]
         self.game = None  # Referencia al juego (se asigna desde Game)
         
     def enter(self):
@@ -45,12 +45,20 @@ class PauseState(GameState):
         if self.selected_option == 0:  # Continuar
             self.state_manager.pop_state()
         elif self.selected_option == 1:  # Inventario
-            # TODO: Abrir inventario
-            print("Inventario - Por implementar")
-        elif self.selected_option == 2:  # Opciones
-            # TODO: Abrir opciones
-            print("Opciones - Por implementar")
-        elif self.selected_option == 3:  # Menú Principal
+            self.state_manager.push_state(STATE_INVENTORY)
+        elif self.selected_option == 2:  # Equipamiento
+            self.state_manager.push_state("equipment")
+        elif self.selected_option == 3:  # Guardar
+            save_load = self.state_manager._states.get("save_load")
+            if save_load:
+                save_load.set_mode(True)  # Modo guardar
+                self.state_manager.push_state("save_load")
+        elif self.selected_option == 4:  # Cargar
+            save_load = self.state_manager._states.get("save_load")
+            if save_load:
+                save_load.set_mode(False)  # Modo cargar
+                self.state_manager.push_state("save_load")
+        elif self.selected_option == 5:  # Menú Principal
             # Volver al menú principal (cambiar estado directamente)
             self.state_manager.change_state(STATE_MENU)
     

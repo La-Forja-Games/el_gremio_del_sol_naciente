@@ -45,8 +45,11 @@ class MenuState(GameState):
             # Iniciar nueva partida (ir a exploración)
             self.state_manager.change_state(STATE_EXPLORATION)
         elif self.selected_option == 1:  # Cargar Partida
-            # TODO: Mostrar menú de carga
-            print("Cargar Partida - Por implementar")
+            # Abrir menú de carga
+            save_load = self.state_manager._states.get("save_load")
+            if save_load:
+                save_load.set_mode(False)  # Modo cargar
+                self.state_manager.push_state("save_load")
         elif self.selected_option == 2:  # Opciones
             # TODO: Mostrar menú de opciones
             print("Opciones - Por implementar")
