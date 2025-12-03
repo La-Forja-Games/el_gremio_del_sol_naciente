@@ -326,6 +326,13 @@ class ExplorationState(GameState):
     
     def _create_simple_map(self, resource_manager):
         """Crea un mapa simple: base_grass con una casa en la esquina superior izquierda"""
+        # Asegurar que tile_generator esté inicializado
+        if self.tile_generator is None:
+            asset_lib = None
+            if self.game:
+                asset_lib = self.game.asset_lib
+            self.tile_generator = TileGenerator(resource_manager, asset_lib)
+        
         # Tamaño del mapa en tiles (50x50 por defecto)
         map_width = 50
         map_height = 50
@@ -333,29 +340,38 @@ class ExplorationState(GameState):
         # Cargar grass tile desde base_grass
         grass_tile = self.tile_generator.get_tile("grass")
         
+        # Inicializar house_tile como None
+        self.house_tile = None
+        
         # Intentar cargar house tile desde legacy_Buildings
-        house_tileset = resource_manager.load_image("tilesets/legacy_Buildings.png", use_alpha=True)
-        if house_tileset:
-            # Extraer un tile de casa (probablemente en las primeras filas/columnas)
-            # Intentar diferentes posiciones hasta encontrar un tile válido
-            for y in range(3):
-                for x in range(5):
-                    house_tile = self.tile_generator._extract_tile_from_tileset(house_tileset, x, y)
-                    if house_tile:
-                        self.house_tile = house_tile
-                        print(f"[OK] Casa cargada desde legacy_Buildings.png (tile {x},{y})")
+        try:
+            house_tileset = resource_manager.load_image("tilesets/legacy_Buildings.png", use_alpha=True)
+            if house_tileset and self.tile_generator:
+                # Extraer un tile de casa (probablemente en las primeras filas/columnas)
+                # Intentar diferentes posiciones hasta encontrar un tile válido
+                for y in range(3):
+                    for x in range(5):
+                        house_tile = self.tile_generator._extract_tile_from_tileset(house_tileset, x, y)
+                        if house_tile:
+                            self.house_tile = house_tile
+                            print(f"[OK] Casa cargada desde legacy_Buildings.png (tile {x},{y})")
+                            break
+                    if self.house_tile:
                         break
-                if self.house_tile:
-                    break
+        except Exception as e:
+            print(f"[WARNING] Error cargando casa desde legacy_Buildings: {e}")
         
         # Si no se encontró casa, intentar desde house_details
         if not self.house_tile:
-            house_details = resource_manager.load_image("tilesets/house_details.png", use_alpha=True)
-            if house_details:
-                house_tile = self.tile_generator._extract_tile_from_tileset(house_details, 0, 0)
-                if house_tile:
-                    self.house_tile = house_tile
-                    print("[OK] Casa cargada desde house_details.png")
+            try:
+                house_details = resource_manager.load_image("tilesets/house_details.png", use_alpha=True)
+                if house_details and self.tile_generator:
+                    house_tile = self.tile_generator._extract_tile_from_tileset(house_details, 0, 0)
+                    if house_tile:
+                        self.house_tile = house_tile
+                        print("[OK] Casa cargada desde house_details.png")
+            except Exception as e:
+                print(f"[WARNING] Error cargando casa desde house_details: {e}")
         
         # Guardar datos del mapa
         self.simple_map_data = {
