@@ -16,6 +16,7 @@ class MenuState(GameState):
         self.title_font = None
         self.selected_option = 0
         self.options = ["Nueva Partida", "Cargar Partida", "Opciones", "Salir"]
+        self.game = None  # Referencia al juego (se asigna desde Game)
         
     def enter(self):
         """Inicializa el estado del menú"""
@@ -41,9 +42,8 @@ class MenuState(GameState):
     def _select_option(self):
         """Ejecuta la opción seleccionada"""
         if self.selected_option == 0:  # Nueva Partida
-            # TODO: Inicializar nueva partida
-            print("Nueva Partida - Por implementar")
-            # self.state_manager.change_state(STATE_EXPLORATION)
+            # Iniciar nueva partida (ir a exploración)
+            self.state_manager.change_state(STATE_EXPLORATION)
         elif self.selected_option == 1:  # Cargar Partida
             # TODO: Mostrar menú de carga
             print("Cargar Partida - Por implementar")

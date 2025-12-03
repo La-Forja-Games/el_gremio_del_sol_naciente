@@ -4,10 +4,15 @@ Clase principal del juego - Loop principal
 
 import pygame
 import sys
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, STATE_MENU
+from src.config import (
+    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, 
+    STATE_MENU, STATE_EXPLORATION, STATE_PAUSE
+)
 from src.state_manager import StateManager
 from src.resource_manager import ResourceManager
 from src.states.menu_state import MenuState
+from src.states.exploration_state import ExplorationState
+from src.states.pause_state import PauseState
 
 
 class Game:
@@ -29,9 +34,21 @@ class Game:
         self.resource_manager = ResourceManager()
         self.state_manager = StateManager()
         
+        # Pasar referencia del juego a los estados (para acceso a resource_manager)
+        self.state_manager.game = self
+        
         # Registrar estados
         menu_state = MenuState(self.state_manager)
+        menu_state.game = self
         self.state_manager.register_state(STATE_MENU, menu_state)
+        
+        exploration_state = ExplorationState(self.state_manager)
+        exploration_state.game = self
+        self.state_manager.register_state(STATE_EXPLORATION, exploration_state)
+        
+        pause_state = PauseState(self.state_manager)
+        pause_state.game = self
+        self.state_manager.register_state(STATE_PAUSE, pause_state)
         
         # Iniciar con el menú
         self.state_manager.change_state(STATE_MENU)
