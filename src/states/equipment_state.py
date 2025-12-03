@@ -23,6 +23,7 @@ class EquipmentState(GameState):
         self.font = None
         self.title_font = None
         self.small_font = None
+        self.background = None  # Fondo del menú secundario
         
         # Navegación
         self.selected_slot = 0
@@ -38,6 +39,17 @@ class EquipmentState(GameState):
             if exploration and hasattr(exploration, 'player'):
                 self.player = exploration.player
                 self.equipment = self.player.equipment
+        
+        # Cargar fondo de menú secundario
+        if self.game and self.game.resource_manager:
+            self.background = self.game.resource_manager.load_image("ui/secondary_menu_bg.png", use_alpha=False)
+            if self.background:
+                from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
+                bg_width = self.background.get_width()
+                bg_height = self.background.get_height()
+                if bg_width != SCREEN_WIDTH or bg_height != SCREEN_HEIGHT:
+                    self.background = pygame.transform.scale(self.background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+                print(f"[OK] Fondo de menú secundario cargado: {bg_width}x{bg_height}")
         
         # Fuentes
         from src.utils.font_helper import get_normal_font, get_epic_font, get_small_font
@@ -91,11 +103,15 @@ class EquipmentState(GameState):
         if not self.equipment or not self.player:
             return
         
-        # Fondo semi-transparente
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(200)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        # Fondo del menú secundario
+        if self.background:
+            screen.blit(self.background, (0, 0))
+        else:
+            # Fallback: fondo semi-transparente
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            overlay.set_alpha(200)
+            overlay.fill((0, 0, 0))
+            screen.blit(overlay, (0, 0))
         
         # Panel principal
         panel_width = 700
@@ -103,37 +119,42 @@ class EquipmentState(GameState):
         panel_x = (SCREEN_WIDTH - panel_width) // 2
         panel_y = (SCREEN_HEIGHT - panel_height) // 2
         
-        # Fondo del panel
-        panel = pygame.Surface((panel_width, panel_height))
-        panel.fill((40, 40, 40))
-        pygame.draw.rect(panel, COLOR_WHITE, (0, 0, panel_width, panel_height), 2)
+        # Fondo del panel (más oscuro para mejor legibilidad)
+        panel = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        panel.fill((20, 20, 20, 240))  # Negro muy oscuro semi-transparente
+        pygame.draw.rect(panel, (255, 150, 50), (0, 0, panel_width, panel_height), 3)  # Borde de fuego
         screen.blit(panel, (panel_x, panel_y))
         
-        # Título
-        title_text = self.title_font.render("EQUIPAMIENTO", True, COLOR_WHITE)
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, panel_y + 30))
-        screen.blit(title_text, title_rect)
+        # Título con efecto de fuego
+        title_surface = self._render_fire_text(self.title_font, "EQUIPAMIENTO")
+        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, panel_y + 30))
+        screen.blit(title_surface, title_rect)
         
         # Slots de equipamiento
         y_offset = panel_y + 80
         for i, (slot_name, slot_label) in enumerate(zip(self.slot_names, self.slot_labels)):
             is_selected = (i == self.selected_slot)
             
-            # Color de fondo
-            bg_color = (80, 80, 80) if is_selected else (60, 60, 60)
+            # Color de fondo (más oscuro para mejor legibilidad)
+            bg_color = (60, 40, 20, 220) if is_selected else (40, 25, 10, 180)
             slot_rect = pygame.Rect(panel_x + 20, y_offset + i * 80, panel_width - 40, 70)
-            pygame.draw.rect(screen, bg_color, slot_rect)
+            slot_surface = pygame.Surface((panel_width - 40, 70), pygame.SRCALPHA)
+            slot_surface.fill(bg_color)
+            screen.blit(slot_surface, slot_rect)
             if is_selected:
-                pygame.draw.rect(screen, COLOR_WHITE, slot_rect, 2)
+                pygame.draw.rect(screen, (255, 150, 50), slot_rect, 2)  # Borde de fuego
+            else:
+                pygame.draw.rect(screen, (100, 50, 0), slot_rect, 1)
             
-            # Label del slot
-            label_text = self.font.render(slot_label + ":", True, COLOR_WHITE)
+            # Label del slot (con mejor contraste)
+            text_color = (255, 200, 150) if is_selected else (220, 180, 120)
+            label_text = self.font.render(slot_label + ":", True, text_color)
             screen.blit(label_text, (panel_x + 30, y_offset + i * 80 + 10))
             
             # Item equipado
             item = self.equipment.get_equipped_item(slot_name)
             if item:
-                item_text = self.font.render(item.nombre, True, (150, 255, 150))
+                item_text = self.font.render(item.nombre, True, (200, 255, 200))
                 screen.blit(item_text, (panel_x + 30, y_offset + i * 80 + 35))
                 
                 # Bonos de stats
@@ -144,26 +165,60 @@ class EquipmentState(GameState):
                         bonuses.append(f"{stat}: {sign}{bonus}")
                 
                 if bonuses:
-                    bonus_text = self.small_font.render(", ".join(bonuses), True, (200, 200, 100))
+                    bonus_text = self.small_font.render(", ".join(bonuses), True, (255, 220, 150))
                     screen.blit(bonus_text, (panel_x + 30, y_offset + i * 80 + 55))
             else:
-                empty_text = self.small_font.render("Vacío", True, (100, 100, 100))
+                empty_text = self.small_font.render("Vacío", True, (150, 130, 100))
                 screen.blit(empty_text, (panel_x + 30, y_offset + i * 80 + 35))
         
-        # Stats del personaje
+        # Stats del personaje (con mejor contraste)
         stats_x = panel_x + panel_width - 250
         stats_y = panel_y + 80
-        stats_title = self.font.render("Stats Totales:", True, COLOR_WHITE)
+        stats_title = self.font.render("Stats Totales:", True, (255, 200, 150))
         screen.blit(stats_title, (stats_x, stats_y))
         
         stats_y += 30
         for stat_name, stat_value in self.player.stats.items():
-            stat_text = self.small_font.render(f"{stat_name}: {stat_value}", True, COLOR_WHITE)
+            stat_text = self.small_font.render(f"{stat_name}: {stat_value}", True, (220, 200, 180))
             screen.blit(stat_text, (stats_x, stats_y))
             stats_y += 20
         
-        # Instrucciones
+        # Instrucciones (con mejor contraste)
         instructions_y = panel_y + panel_height - 40
-        inst_text = self.small_font.render("X: Desequipar | ESC: Cerrar", True, (200, 200, 200))
+        inst_text = self.small_font.render("X: Desequipar | ESC: Cerrar", True, (220, 200, 180))
         screen.blit(inst_text, (panel_x + 20, instructions_y))
+    
+    def _render_fire_text(self, font, text, intensity=1.0):
+        """Renderiza texto con efecto de fuego oscuro (mismo que otros menús)"""
+        # Colores de fuego oscuro
+        fire_colors = [
+            (255, 150, 50),   # Naranja dorado
+            (255, 120, 30),   # Naranja oscuro
+            (220, 80, 20),    # Naranja rojizo oscuro
+            (180, 50, 10),    # Rojo naranja oscuro
+            (150, 40, 5),     # Rojo oscuro
+            (120, 30, 0),     # Rojo muy oscuro
+            (80, 20, 0),      # Rojo casi negro
+        ]
+        
+        fire_colors = [tuple(int(c * intensity) for c in color) for color in fire_colors]
+        base_text = font.render(text, True, fire_colors[-1])
+        text_surface = pygame.Surface(base_text.get_size(), pygame.SRCALPHA)
+        
+        num_layers = len(fire_colors)
+        for i, color in enumerate(fire_colors):
+            offset_x = int((num_layers - i) * 0.5)
+            offset_y = int((num_layers - i) * 0.3)
+            layer_text = font.render(text, True, color)
+            alpha = int(255 * (1.0 - i * 0.15))
+            if alpha > 0:
+                layer_text.set_alpha(alpha)
+                text_surface.blit(layer_text, (offset_x, offset_y))
+        
+        center_text = font.render(text, True, fire_colors[0])
+        center_rect = center_text.get_rect(center=(text_surface.get_width() // 2, 
+                                                    text_surface.get_height() // 2))
+        text_surface.blit(center_text, center_rect)
+        
+        return text_surface
 

@@ -83,18 +83,11 @@ class MenuState(GameState):
             from src.config import COLOR_BLACK
             screen.fill(COLOR_BLACK)
         
-        # Título con mejor contraste
-        from src.config import COLOR_BLACK, COLOR_WHITE
-        # Usar color blanco para mejor contraste con el fondo
-        title_color = COLOR_WHITE
-        
-        # Sombra del título para mejor legibilidad
-        title_shadow = self.title_font.render("El Gremio del Sol Naciente", True, (0, 0, 0))
-        title_text = self.title_font.render("El Gremio del Sol Naciente", True, title_color)
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2 + 2, 152))
-        screen.blit(title_shadow, title_rect)
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 150))
-        screen.blit(title_text, title_rect)
+        # Título con efecto de fuego (gradiente de colores cálidos)
+        title_text = "El Gremio del Sol Naciente"
+        title_surface = self._render_fire_text(self.title_font, title_text)
+        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 150))
+        screen.blit(title_surface, title_rect)
         
         # Opciones del menú con mejor estilo
         y_offset = 320
@@ -104,13 +97,13 @@ class MenuState(GameState):
         for i, option in enumerate(self.options):
             # Color según selección
             if i == self.selected_option:
-                # Opción seleccionada: color destacado
-                text_color = (255, 215, 0)  # Dorado
-                bg_color = (100, 100, 100, 180)  # Fondo semi-transparente
+                # Opción seleccionada: efecto de fuego más intenso
+                text_surface = self._render_fire_text(self.font, option, intensity=1.0)
+                bg_color = (100, 50, 0, 200)  # Fondo naranja oscuro semi-transparente
             else:
-                # Opción no seleccionada
-                text_color = COLOR_WHITE
-                bg_color = (50, 50, 50, 120)
+                # Opción no seleccionada: fuego más suave
+                text_surface = self._render_fire_text(self.font, option, intensity=0.6)
+                bg_color = (50, 25, 0, 120)  # Fondo marrón oscuro semi-transparente
             
             # Fondo del botón (rectángulo semi-transparente)
             button_rect = pygame.Rect(
@@ -123,10 +116,9 @@ class MenuState(GameState):
             button_surface.fill(bg_color)
             screen.blit(button_surface, button_rect)
             
-            # Texto del botón
-            text = self.font.render(option, True, text_color)
-            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, y_offset + i * 70))
-            screen.blit(text, text_rect)
+            # Texto del botón con efecto de fuego
+            text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, y_offset + i * 70))
+            screen.blit(text_surface, text_rect)
             
             # Indicador de selección (flecha o símbolo)
             if i == self.selected_option:
@@ -136,5 +128,62 @@ class MenuState(GameState):
                     (SCREEN_WIDTH // 2 - button_width // 2 + 10, y_offset + i * 70 - 8),
                     (SCREEN_WIDTH // 2 - button_width // 2 + 10, y_offset + i * 70 + 8)
                 ]
-                pygame.draw.polygon(screen, text_color, arrow_points)
+                # Flecha con color de fuego
+                fire_color = (255, 200, 0) if i == self.selected_option else (200, 100, 0)
+                pygame.draw.polygon(screen, fire_color, arrow_points)
+    
+    def _render_fire_text(self, font, text, intensity=1.0):
+        """
+        Renderiza texto con efecto de fuego (gradiente de colores cálidos oscuros)
+        
+        Args:
+            font: Fuente de pygame
+            text: Texto a renderizar
+            intensity: Intensidad del efecto (0.0 a 1.0)
+            
+        Returns:
+            Superficie con el texto renderizado con efecto de fuego
+        """
+        # Colores de fuego oscuro (de más claro a más oscuro)
+        fire_colors = [
+            (255, 150, 50),   # Naranja dorado (centro - más oscuro)
+            (255, 120, 30),   # Naranja oscuro
+            (220, 80, 20),    # Naranja rojizo oscuro
+            (180, 50, 10),    # Rojo naranja oscuro
+            (150, 40, 5),     # Rojo oscuro
+            (120, 30, 0),     # Rojo muy oscuro
+            (80, 20, 0),      # Rojo casi negro (bordes)
+        ]
+        
+        # Ajustar intensidad
+        fire_colors = [tuple(int(c * intensity) for c in color) for color in fire_colors]
+        
+        # Crear superficie base con el texto en el color más oscuro (para sombra)
+        base_text = font.render(text, True, fire_colors[-1])
+        text_surface = pygame.Surface(base_text.get_size(), pygame.SRCALPHA)
+        
+        # Renderizar múltiples capas del texto con diferentes colores y offsets
+        # para crear efecto de gradiente/fuego
+        num_layers = len(fire_colors)
+        for i, color in enumerate(fire_colors):
+            # Offset para crear efecto de profundidad
+            offset_x = int((num_layers - i) * 0.5)
+            offset_y = int((num_layers - i) * 0.3)
+            
+            # Renderizar texto con este color
+            layer_text = font.render(text, True, color)
+            
+            # Aplicar alpha según la capa (más transparente en los bordes)
+            alpha = int(255 * (1.0 - i * 0.15))
+            if alpha > 0:
+                layer_text.set_alpha(alpha)
+                text_surface.blit(layer_text, (offset_x, offset_y))
+        
+        # Capa final con el color más brillante en el centro
+        center_text = font.render(text, True, fire_colors[0])
+        center_rect = center_text.get_rect(center=(text_surface.get_width() // 2, 
+                                                    text_surface.get_height() // 2))
+        text_surface.blit(center_text, center_rect)
+        
+        return text_surface
 

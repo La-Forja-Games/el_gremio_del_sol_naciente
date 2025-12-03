@@ -54,7 +54,19 @@ class TileGenerator:
         if not self.resource_manager:
             return None
         
-        # Intentar cargar desde ground_grass_details.png
+        # PRIORIDAD 1: Intentar cargar desde base_grass.png (específico para pasto base)
+        base_grass = self.resource_manager.load_image("tilesets/base_grass.png", use_alpha=True)
+        if base_grass:
+            # Extraer el primer tile (0, 0) o buscar tiles de grass
+            tiles_x = base_grass.get_width() // TILE_SIZE
+            tiles_y = base_grass.get_height() // TILE_SIZE
+            if tiles_x > 0 and tiles_y > 0:
+                # Usar el primer tile de grass
+                tile = self._extract_tile_from_tileset(base_grass, 0, 0)
+                if tile:
+                    return tile
+        
+        # PRIORIDAD 2: Intentar desde ground_grass_details.png
         grass_tileset = self.resource_manager.load_image("tilesets/ground_grass_details.png", use_alpha=True)
         if grass_tileset:
             # Extraer el primer tile (0, 0) o buscar un tile de grass
@@ -63,7 +75,7 @@ class TileGenerator:
             if tile:
                 return tile
         
-        # Intentar desde legacy_Tiles.png
+        # PRIORIDAD 3: Intentar desde legacy_Tiles.png
         legacy_tiles = self.resource_manager.load_image("tilesets/legacy_Tiles.png", use_alpha=True)
         if legacy_tiles:
             # Buscar tile de grass (generalmente en las primeras filas)
@@ -75,7 +87,7 @@ class TileGenerator:
                         # Por ahora, usar el primero que encontremos
                         return tile
         
-        # Intentar desde walls_floor.png
+        # PRIORIDAD 4: Intentar desde walls_floor.png
         walls_floor = self.resource_manager.load_image("tilesets/walls_floor.png", use_alpha=True)
         if walls_floor:
             # Buscar tile de floor/grass

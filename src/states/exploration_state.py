@@ -28,6 +28,11 @@ class ExplorationState(GameState):
         self.camera = None
         self.game = None  # Referencia al juego (se asigna desde Game)
         self.tile_generator = None  # Generador de tiles
+        self.village_renderer = None  # Renderizador del pueblo generado
+        self.map_background = None  # Fondo PNG del mapa
+        self.map_background_size = (0, 0)  # Tamaño del fondo PNG
+        self.simple_map_data = None  # Datos del mapa simple (grass + house)
+        self.house_tile = None  # Tile de la casa
         
         # Input
         self.keys_pressed = {}
@@ -49,27 +54,83 @@ class ExplorationState(GameState):
         if self.tile_generator is None:
             self.tile_generator = TileGenerator(resource_manager, asset_lib)
         
+        # Intentar cargar mapa map_01.tmx primero
+        map_loaded = False
+        map_file = "map_01.tmx"
+        if self.map_manager.load_map(map_file):
+            map_loaded = True
+            print(f"[OK] Mapa {map_file} cargado")
+        else:
+            # Intentar con diferentes nombres
+            for alt_name in ["map_01.tmx", "map01.tmx", "Map_01.tmx"]:
+                if self.map_manager.load_map(alt_name):
+                    map_loaded = True
+                    print(f"[OK] Mapa {alt_name} cargado")
+                    break
+        
+        # Si no hay .tmx, crear mapa simple (base_grass + house)
+        if not map_loaded and resource_manager:
+            # Crear mapa simple: base_grass con una casa en la esquina superior izquierda
+            self._create_simple_map(resource_manager)
+        else:
+            self.map_background = None
+            self.simple_map_data = None
+        
         # Crear jugador (posición inicial para top-down)
-        start_x = SCREEN_WIDTH // 2  # Centro horizontal
-        start_y = SCREEN_HEIGHT // 2  # Centro vertical
+        # Colocar en el centro del mapa
+        if map_loaded and self.map_manager.current_map:
+            # Usar el mapa cargado
+            map_width_px = self.map_manager.get_map_width()
+            map_height_px = self.map_manager.get_map_height()
+            start_x = map_width_px // 2
+            start_y = map_height_px // 2
+        elif self.simple_map_data:
+            # Usar mapa simple (centro)
+            map_width_px = self.simple_map_data['width'] * TILE_SIZE
+            map_height_px = self.simple_map_data['height'] * TILE_SIZE
+            start_x = map_width_px // 2
+            start_y = map_height_px // 2
+        elif self.map_background:
+            # Usar mapa PNG (centro de la imagen)
+            start_x = self.map_background_size[0] // 2
+            start_y = self.map_background_size[1] // 2
+        elif self.village_renderer:
+            # Usar pueblo generado
+            start_x = self.village_renderer.map_width_px // 2
+            start_y = self.village_renderer.map_height_px // 2
+        else:
+            # Fallback: centro de pantalla
+            start_x = SCREEN_WIDTH // 2
+            start_y = SCREEN_HEIGHT // 2
+        
         self.player = Player(start_x, start_y, resource_manager=resource_manager)
         
         # Asegurar que el jugador tenga un sprite válido
         if not self.player.image:
             print("Advertencia: El jugador no tiene sprite, creando uno de emergencia")
-            import pygame
-            from src.config import TILE_SIZE
             self.player.image = pygame.Surface((TILE_SIZE, TILE_SIZE * 2))
             self.player.image.fill((255, 0, 0))  # Rojo para debug
             pygame.draw.circle(self.player.image, (255, 255, 255), (TILE_SIZE//2, TILE_SIZE), TILE_SIZE//3)
         
-        # Cargar mapa de prueba (si existe)
-        # self.map_manager.load_map("test_map.tmx")
-        
         # Inicializar cámara top-down
-        # Tamaño del mapa en tiles (puede ser dinámico según el mapa cargado)
-        map_width_tiles = 50  # Ancho del mapa en tiles
-        map_height_tiles = 50  # Alto del mapa en tiles
+        # Tamaño del mapa en tiles
+        if map_loaded and self.map_manager.current_map:
+            map_width_tiles = self.map_manager.current_map.width
+            map_height_tiles = self.map_manager.current_map.height
+        elif self.simple_map_data:
+            map_width_tiles = self.simple_map_data['width']
+            map_height_tiles = self.simple_map_data['height']
+        elif self.map_background:
+            # Convertir píxeles a tiles para el mapa PNG
+            map_width_tiles = self.map_background_size[0] // TILE_SIZE
+            map_height_tiles = self.map_background_size[1] // TILE_SIZE
+        elif self.village_renderer:
+            map_width_tiles = self.village_renderer.width
+            map_height_tiles = self.village_renderer.height
+        else:
+            map_width_tiles = 50
+            map_height_tiles = 50
+        
         self.camera = Camera(map_width_tiles, map_height_tiles)
         self.camera.update(self.player)
         
@@ -176,12 +237,30 @@ class ExplorationState(GameState):
         # Limpiar pantalla con color de fondo
         screen.fill((100, 150, 100))  # Verde pasto
         
-        # Renderizar fondo (tiles de césped)
-        self._render_background(screen)
-        
-        # Renderizar mapa (si existe)
+        # Prioridad: Renderizar mapa de Tiled (map_01.tmx) si existe
         if self.camera and self.map_manager.current_map:
             self.map_manager.render(screen, self.camera.rect)
+        elif self.simple_map_data and self.camera:
+            # Renderizar mapa simple (base_grass + house)
+            self._render_simple_map(screen)
+        elif self.map_background and self.camera:
+            # Renderizar mapa PNG directamente
+            # Calcular qué parte del mapa es visible
+            start_x = max(0, self.camera.rect.x)
+            start_y = max(0, self.camera.rect.y)
+            end_x = min(self.map_background_size[0], self.camera.rect.x + self.camera.rect.width)
+            end_y = min(self.map_background_size[1], self.camera.rect.y + self.camera.rect.height)
+            
+            # Dibujar la porción visible del mapa PNG
+            screen.blit(self.map_background, 
+                       (start_x - self.camera.rect.x, start_y - self.camera.rect.y),
+                       (start_x, start_y, end_x - start_x, end_y - start_y))
+        elif self.village_renderer and self.camera:
+            # Fallback: renderizar pueblo generado
+            self.village_renderer.render(screen, self.camera.rect)
+        else:
+            # Fallback: renderizar fondo (tiles de césped)
+            self._render_background(screen)
         
         # Renderizar jugador
         if self.player and self.camera:
@@ -245,9 +324,92 @@ class ExplorationState(GameState):
             level_text = small_font.render(f"Nivel: {self.player.level}", True, (255, 255, 255))
             screen.blit(level_text, (10, 75))
     
+    def _create_simple_map(self, resource_manager):
+        """Crea un mapa simple: base_grass con una casa en la esquina superior izquierda"""
+        # Tamaño del mapa en tiles (50x50 por defecto)
+        map_width = 50
+        map_height = 50
+        
+        # Cargar grass tile desde base_grass
+        grass_tile = self.tile_generator.get_tile("grass")
+        
+        # Intentar cargar house tile desde legacy_Buildings
+        house_tileset = resource_manager.load_image("tilesets/legacy_Buildings.png", use_alpha=True)
+        if house_tileset:
+            # Extraer un tile de casa (probablemente en las primeras filas/columnas)
+            # Intentar diferentes posiciones hasta encontrar un tile válido
+            for y in range(3):
+                for x in range(5):
+                    house_tile = self.tile_generator._extract_tile_from_tileset(house_tileset, x, y)
+                    if house_tile:
+                        self.house_tile = house_tile
+                        print(f"[OK] Casa cargada desde legacy_Buildings.png (tile {x},{y})")
+                        break
+                if self.house_tile:
+                    break
+        
+        # Si no se encontró casa, intentar desde house_details
+        if not self.house_tile:
+            house_details = resource_manager.load_image("tilesets/house_details.png", use_alpha=True)
+            if house_details:
+                house_tile = self.tile_generator._extract_tile_from_tileset(house_details, 0, 0)
+                if house_tile:
+                    self.house_tile = house_tile
+                    print("[OK] Casa cargada desde house_details.png")
+        
+        # Guardar datos del mapa
+        self.simple_map_data = {
+            'width': map_width,
+            'height': map_height,
+            'grass_tile': grass_tile,
+            'house_pos': (0, 0)  # Casa en la esquina superior izquierda
+        }
+        
+        print(f"[OK] Mapa simple creado: {map_width}x{map_height} tiles (base_grass + house)")
+    
+    def _render_simple_map(self, screen):
+        """Renderiza el mapa simple (base_grass + house)"""
+        if not self.simple_map_data:
+            return
+        
+        map_width = self.simple_map_data['width']
+        map_height = self.simple_map_data['height']
+        grass_tile = self.simple_map_data['grass_tile']
+        house_pos = self.simple_map_data['house_pos']
+        
+        # Calcular qué tiles son visibles
+        start_tile_x = max(0, self.camera.rect.x // TILE_SIZE)
+        start_tile_y = max(0, self.camera.rect.y // TILE_SIZE)
+        end_tile_x = min(map_width, (self.camera.rect.x + self.camera.rect.width) // TILE_SIZE + 1)
+        end_tile_y = min(map_height, (self.camera.rect.y + self.camera.rect.height) // TILE_SIZE + 1)
+        
+        # Renderizar grass tiles
+        for y in range(start_tile_y, end_tile_y):
+            for x in range(start_tile_x, end_tile_x):
+                tile_world_x = x * TILE_SIZE
+                tile_world_y = y * TILE_SIZE
+                
+                # Convertir coordenadas del mundo a pantalla
+                tile_screen_x = tile_world_x - self.camera.rect.x
+                tile_screen_y = tile_world_y - self.camera.rect.y
+                
+                # Renderizar grass
+                screen.blit(grass_tile, (tile_screen_x, tile_screen_y))
+        
+        # Renderizar casa en la esquina superior izquierda (si está visible)
+        house_x, house_y = house_pos
+        if (start_tile_x <= house_x < end_tile_x and 
+            start_tile_y <= house_y < end_tile_y and 
+            self.house_tile):
+            house_world_x = house_x * TILE_SIZE
+            house_world_y = house_y * TILE_SIZE
+            house_screen_x = house_world_x - self.camera.rect.x
+            house_screen_y = house_world_y - self.camera.rect.y
+            screen.blit(self.house_tile, (house_screen_x, house_screen_y))
+    
     def _render_background(self, screen):
         """Renderiza el fondo para top-down (tiles de césped)"""
-        from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
+        # SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE ya están importados arriba
         
         if not self.camera:
             return

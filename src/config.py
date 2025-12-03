@@ -30,6 +30,7 @@ COLOR_BLUE = (0, 0, 255)
 COLOR_YELLOW = (255, 255, 0)
 
 # Estados del juego
+STATE_LOADING = "loading"
 STATE_MENU = "menu"
 STATE_EXPLORATION = "exploration"
 STATE_COMBAT = "combat"

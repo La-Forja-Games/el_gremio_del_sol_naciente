@@ -18,16 +18,23 @@ class MapManager:
         self.collision_layer: Optional[pytmx.TiledObjectLayer] = None
         self.event_layer: Optional[pytmx.TiledObjectLayer] = None
         
-    def load_map(self, map_path: str):
+    def load_map(self, map_path: str) -> bool:
         """
         Carga un mapa desde un archivo .tmx
         
         Args:
             map_path: Ruta al archivo .tmx relativa a data/maps/
+            
+        Returns:
+            True si se cargó correctamente, False si no
         """
         full_path = os.path.join(DATA_DIR, "maps", map_path)
         
         try:
+            if not os.path.exists(full_path):
+                print(f"Mapa no encontrado: {full_path}")
+                return False
+            
             self.current_map = pytmx.load_pygame(full_path, pixelalpha=True)
             self.map_name = map_path
             
@@ -44,10 +51,12 @@ class MapManager:
             print(f"Mapa cargado: {map_path}")
             print(f"  Dimensiones: {self.current_map.width}x{self.current_map.height} tiles")
             print(f"  Tamaño de tile: {self.current_map.tilewidth}x{self.current_map.tileheight}")
+            return True
             
         except Exception as e:
             print(f"Error cargando mapa {full_path}: {e}")
             self.current_map = None
+            return False
     
     def render(self, screen: pygame.Surface, camera_rect: pygame.Rect):
         """

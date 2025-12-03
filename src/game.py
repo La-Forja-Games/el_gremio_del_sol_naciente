@@ -6,12 +6,13 @@ import pygame
 import sys
 from src.config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, 
-    STATE_MENU, STATE_EXPLORATION, STATE_PAUSE,
+    STATE_LOADING, STATE_MENU, STATE_EXPLORATION, STATE_PAUSE,
     STATE_INVENTORY, STATE_COMBAT
 )
 from src.state_manager import StateManager
 from src.resource_manager import ResourceManager
 from src.utils.rpg_assets import RPGAssetLibrary
+from src.states.loading_state import LoadingState
 from src.states.menu_state import MenuState
 from src.states.exploration_state import ExplorationState
 from src.states.pause_state import PauseState
@@ -45,6 +46,10 @@ class Game:
         self.state_manager.game = self
         
         # Registrar estados
+        loading_state = LoadingState(self.state_manager)
+        loading_state.game = self
+        self.state_manager.register_state(STATE_LOADING, loading_state)
+        
         menu_state = MenuState(self.state_manager)
         menu_state.game = self
         self.state_manager.register_state(STATE_MENU, menu_state)
@@ -73,8 +78,8 @@ class Game:
         combat_state.game = self
         self.state_manager.register_state(STATE_COMBAT, combat_state)
         
-        # Iniciar con el menú
-        self.state_manager.change_state(STATE_MENU)
+        # Iniciar con la pantalla de loading
+        self.state_manager.change_state(STATE_LOADING)
         
     def run(self):
         """Ejecuta el loop principal del juego"""
